@@ -1,18 +1,16 @@
 // db.js
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('✅ Connecté à MongoDB');
-  } catch (err) {
-    console.error('❌ Erreur de connexion MongoDB :', err.message);
-    process.exit(1); // Arrête le programme
-  }
-};
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // utile pour Render
+  },
+});
 
-module.exports = connectDB;
+db.connect()
+  .then(() => console.log("✅ Connecté à PostgreSQL via db.js"))
+  .catch((err) => console.error("❌ Erreur de connexion PostgreSQL :", err));
+
+module.exports = db;
