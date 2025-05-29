@@ -1,6 +1,7 @@
 // handlers/parier.js
 
-const User = require('../models/User');
+const User = require('../../models/User');
+
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
