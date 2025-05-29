@@ -1,6 +1,7 @@
 // handlers/solde.js
 
-const User = require('../models/User');
+const User = require('../../models/User');
+
 
 async function handleSolde(bot, msg) {
   const chatId = msg.chat.id;
