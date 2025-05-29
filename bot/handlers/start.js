@@ -1,4 +1,4 @@
-const pool = require('../../config/db'); // ✅ Correction ici
+const db = require('../../config/db'); // ✅ Correction ici
 
 async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
@@ -6,13 +6,13 @@ async function handleStart(bot, msg) {
   const username = msg.from.username || msg.from.first_name || "Utilisateur";
 
   try {
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       'SELECT * FROM users WHERE telegram_id = $1',
       [telegramId]
     );
 
     if (rows.length === 0) {
-      await pool.query(
+      await db.query(
         'INSERT INTO users (telegram_id, username, balance, en_jeu, pari, historique) VALUES ($1, $2, $3, false, 0, $4)',
         [telegramId, username, 1000, JSON.stringify([])]
       );
@@ -28,3 +28,4 @@ async function handleStart(bot, msg) {
 }
 
 module.exports = handleStart;
+
