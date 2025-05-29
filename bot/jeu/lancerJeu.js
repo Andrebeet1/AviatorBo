@@ -1,66 +1,88 @@
-const db = require('../../config/db'); // ou 'pool' selon ton export
+require('dotenv').config();
+const express = require('express');
+const { Pool } = require('pg');
+const TelegramBot = require('node-telegram-bot-api');
 
-async function lancerJeu(bot, chatId, telegramId, mise) {
-  let multiplicateur = 1.00;
-  const intervalle = 500;
-  const croissance = () => (Math.random() * 0.3 + 0.05);
-  let enCours = true;
+// Handlers personnalisés
+const handleStart = require('./handlers/start');
+const handleParier = require('./handlers/parier');
+const handleRetirer = require('./handlers/retirer');
+const handleSolde = require('./handlers/solde');
+const handleHistorique = require('./handlers/historique');
 
-  const interval = setInterval(async () => {
-    multiplicateur += croissance();
-    multiplicateur = parseFloat(multiplicateur.toFixed(2));
+// Vérifie les variables d'environnement
+const token = process.env.TELEGRAM_TOKEN;
+const baseUrl = process.env.BASE_URL;
+const port = process.env.PORT || 3000;
 
-    const probaCrash = Math.random();
-    const crashImminent = probaCrash < 0.05 + multiplicateur / 10;
-
-    if (crashImminent) {
-      clearInterval(interval);
-      enCours = false;
-
-      try {
-        const { rows } = await db.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
-        if (rows.length === 0 || !rows[0].en_jeu) return;
-
-        const user = rows[0];
-        const perte = user.pari;
-        const historique = user.historique || [];
-        historique.push({
-          date: new Date(),
-          pari: perte,
-          multi: multiplicateur.toFixed(2),
-          gain: 0
-        });
-
-        await db.query(
-          `UPDATE users 
-           SET en_jeu = false, pari = 0, historique = $1 
-           WHERE telegram_id = $2`,
-          [JSON.stringify(historique), telegramId]
-        );
-
-        bot.sendMessage(chatId, `💥 CRASH à x${multiplicateur.toFixed(2)}\n❌ Tu as perdu ta mise.`);
-      } catch (err) {
-        console.error('Erreur PostgreSQL dans lancerJeu:', err);
-        bot.sendMessage(chatId, '❌ Une erreur s’est produite pendant le jeu.');
-      }
-
-      // ✅ Relancer automatiquement le jeu après 10 secondes
-      setTimeout(() => {
-        lancerJeu(bot, chatId, telegramId, mise);
-      }, 10000);
-
-      return;
-    }
-
-    // ✅ Affiche le multiplicateur en temps réel
-    bot.sendMessage(chatId, `📈 Multiplicateur : x${multiplicateur.toFixed(2)}`, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '💸 Retirer maintenant', callback_data: `retirer_${telegramId}` }]
-        ]
-      }
-    });
-  }, intervalle);
+if (!token || !baseUrl) {
+  console.error("❌ TELEGRAM_TOKEN ou BASE_URL manquant dans .env !");
+  process.exit(1);
 }
 
-module.exports = lancerJeu;
+// Initialise Telegram Bot
+const bot = new TelegramBot(token);
+
+// Initialise Express
+const app = express();
+app.use(express.json());
+
+// Connexion à PostgreSQL
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+db.connect()
+  .then(() => console.log("✅ Connecté à PostgreSQL"))
+  .catch((err) => {
+    console.error("❌ Erreur de connexion PostgreSQL :", err);
+    process.exit(1);
+  });
+
+// Configure le webhook Telegram
+const webhookUrl = `${baseUrl.replace(/\/$/, '')}/webhook`;
+bot.setWebHook(webhookUrl);
+console.log(`🤖 Webhook Telegram défini : ${webhookUrl}`);
+
+// Routes Express
+app.get('/', (req, res) => {
+  res.send('🤖 Bot Telegram actif !');
+});
+
+app.post('/webhook', (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+// === Bot command handlers ===
+bot.onText(/\/start/, (msg) => handleStart(bot, msg, db));
+bot.onText(/\/parier (\d+)/, (msg, match) => handleParier(bot, msg, match, db));
+bot.onText(/\/retirer/, (msg) => handleRetirer(bot, msg, db));
+bot.onText(/\/solde/, (msg) => handleSolde(bot, msg, db));
+bot.onText(/\/historique/, (msg) => handleHistorique(bot, msg, db));
+
+// === Callback buttons ===
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const data = query.data;
+
+  await bot.answerCallbackQuery(query.id);
+
+  // ⚠️ Tu peux router les actions vers les bons handlers ici si nécessaire
+  if (data === 'solde') {
+    handleSolde(bot, { chat: { id: chatId }, from: { id: userId } }, db);
+  } else if (data === 'parier') {
+    handleParier(bot, { chat: { id: chatId }, from: { id: userId } }, ['200'], db);
+  } else if (data === 'retirer') {
+    handleRetirer(bot, { chat: { id: chatId }, from: { id: userId } }, db);
+  } else if (data === 'historique') {
+    handleHistorique(bot, { chat: { id: chatId }, from: { id: userId } }, db);
+  }
+});
+
+// Démarrer le serveur Express
+app.listen(port, () => {
+  console.log(`🚀 Serveur Express lancé sur le port ${port}`);
+});
