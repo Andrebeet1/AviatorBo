@@ -1,5 +1,6 @@
 // models/User.js
-const db = require('../db'); // Connexion PostgreSQL (Pool)
+const db = require('../config/db');
+ 
 const { v4: uuidv4 } = require('uuid'); // Pour des IDs uniques si nécessaire
 
 // Crée ou récupère un utilisateur
