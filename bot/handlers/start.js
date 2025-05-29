@@ -1,35 +1,78 @@
-const db = require('../../config/db'); // Chemin vers ta connexion PostgreSQL
+const { Markup } = require('telegraf');
+const { findOrCreateUser, getUser, updateUser } = require('../../models/User');
 
-async function handleStart(bot, msg) {
-  const chatId = msg.chat.id;
-  const telegramId = msg.from.id.toString(); // identifiant unique
-  const username = msg.from.username || msg.from.first_name || "Utilisateur";
+module.exports = (bot) => {
+  // Commande /start
+  bot.command('start', async (ctx) => {
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username);
 
-  try {
-    // Recherche de l'utilisateur
-    const { rows } = await db.query(
-      'SELECT * FROM users WHERE telegram_id = $1',
-      [telegramId]
-    );
+    const message = `
+👤 Ton compte Telegram est maintenant lié !
+🎉 Bienvenue @${ctx.from.username} !
+💰 Solde initial : ${user.balance} F.
 
-    if (rows.length === 0) {
-      // Création automatique du compte lié au Telegram
-      await db.query(
-        'INSERT INTO users (telegram_id, username, balance, en_jeu, pari, historique) VALUES ($1, $2, $3, false, 0, $4)',
-        [telegramId, username, 1000, JSON.stringify([])]
-      );
+🧾 Voici ce que tu peux faire :
+👇 Choisis une option ci-dessous :
+`;
 
-      return bot.sendMessage(chatId, `👤 Ton compte Telegram est maintenant lié !\n🎉 Bienvenue @${username} !\n💰 Solde initial : 1000 F.`);
+    await ctx.reply(message, Markup.inlineKeyboard([
+      [Markup.button.callback('💰 Voir mon solde', 'solde')],
+      [Markup.button.callback('🎲 Parier 200 F', 'parier')],
+      [Markup.button.callback('🏧 Retirer mes gains', 'retirer')],
+      [Markup.button.callback('📜 Mon historique', 'historique')]
+    ]));
+  });
+
+  // Action : voir le solde
+  bot.action('solde', async (ctx) => {
+    await ctx.answerCbQuery();
+    const user = await getUser(ctx.from.id);
+    if (user) {
+      await ctx.reply(`💰 Ton solde actuel est de : ${user.balance} F.`);
     } else {
-      // Connexion automatique
-      const user = rows[0];
-      return bot.sendMessage(chatId, `👋 Re-bienvenue @${username} !\n💼 Compte lié à ton Telegram.\n💰 Solde : ${user.balance} F.`);
+      await ctx.reply("❌ Utilisateur non trouvé.");
+    }
+  });
+
+  // Action : parier 200 F
+  bot.action('parier', async (ctx) => {
+    await ctx.answerCbQuery();
+    const user = await getUser(ctx.from.id);
+
+    if (user.balance < 200) {
+      return ctx.reply("❌ Tu n'as pas assez pour parier 200 F.");
     }
 
-  } catch (err) {
-    console.error('❌ Erreur START :', err.message);
-    return bot.sendMessage(chatId, `❌ Une erreur est survenue : ${err.message}`);
-  }
-}
+    await updateUser(user.telegram_id, { balance: user.balance - 200 });
+    ctx.reply("🎰 Tu as parié 200 F. Bonne chance !");
+  });
 
-module.exports = handleStart;
+  // Action : retirer
+  bot.action('retirer', async (ctx) => {
+    await ctx.answerCbQuery();
+    const user = await getUser(ctx.from.id);
+
+    if (user.balance === 0) {
+      return ctx.reply("💸 Tu n’as rien à retirer.");
+    }
+
+    await updateUser(user.telegram_id, { balance: 0 });
+    ctx.reply(`🏧 Tu as retiré ${user.balance} F. Ton solde est maintenant à 0 F.`);
+  });
+
+  // Action : historique
+  bot.action('historique', async (ctx) => {
+    await ctx.answerCbQuery();
+    const user = await getUser(ctx.from.id);
+
+    if (!user.historique || user.historique.length === 0) {
+      return ctx.reply("📜 Ton historique est vide.");
+    }
+
+    const historiqueText = user.historique.map((partie, i) =>
+      `#${i + 1} - ${partie.date} : ${partie.description || "Partie enregistrée"}`
+    ).join('\n');
+
+    ctx.reply("🧾 Ton historique :\n" + historiqueText);
+  });
+};
