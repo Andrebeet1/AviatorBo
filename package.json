@@ -1,0 +1,26 @@
+{
+    "name": "aviatorbot",
+    "version": "1.0.0",
+    "description": "🎮 Bot Telegram Aviator avec paris, solde, historique et classement web Bootstrap.",
+    "main": "index.js",
+    "scripts": {
+      "bot": "node index.js",
+      "web": "node web/server.js",
+      "dev": "concurrently \"npm run bot\" \"npm run web\""
+    },
+    "keywords": ["telegram", "bot", "aviator", "game", "express", "mongodb"],
+    "author": "TonNom",
+    "license": "MIT",
+    "dependencies": {
+      "axios": "^1.6.7",
+      "dotenv": "^16.3.1",
+      "ejs": "^3.1.9",
+      "express": "^4.19.2",
+      "mongoose": "^8.2.1",
+      "node-telegram-bot-api": "^0.61.0"
+    },
+    "devDependencies": {
+      "concurrently": "^8.2.2"
+    }
+  }
+  
