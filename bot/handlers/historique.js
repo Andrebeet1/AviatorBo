@@ -1,6 +1,7 @@
 // handlers/historique.js
 
-const User = require('../models/User');
+const User = require('../../models/User');
+
 
 function formatDate(date) {
   return new Date(date).toLocaleString('fr-FR', {
