@@ -4,7 +4,7 @@
   "description": "🎮 Bot Telegram Aviator avec paris, solde, historique et classement web Bootstrap.",
   "main": "index.js",
   "scripts": {
-    "bot": "node bot/bot.js",
+    "bot": "node bot/index.js",
     "web": "node web/server.js",
     "dev": "concurrently \"npm run bot\" \"npm run web\"",
     "start": "npm run dev"
