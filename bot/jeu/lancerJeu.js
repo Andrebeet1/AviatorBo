@@ -1,5 +1,4 @@
-const db = require('../../config/db');
-
+const db = require('../../config/db'); // ou 'pool' selon ton export
 
 async function lancerJeu(bot, chatId, telegramId, mise) {
   let multiplicateur = 1.00;
@@ -19,7 +18,7 @@ async function lancerJeu(bot, chatId, telegramId, mise) {
       enCours = false;
 
       try {
-        const { rows } = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
+        const { rows } = await db.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
         if (rows.length === 0 || !rows[0].en_jeu) return;
 
         const user = rows[0];
@@ -32,7 +31,7 @@ async function lancerJeu(bot, chatId, telegramId, mise) {
           gain: 0
         });
 
-        await pool.query(
+        await db.query(
           `UPDATE users 
            SET en_jeu = false, pari = 0, historique = $1 
            WHERE telegram_id = $2`,
@@ -45,9 +44,15 @@ async function lancerJeu(bot, chatId, telegramId, mise) {
         bot.sendMessage(chatId, '❌ Une erreur s’est produite pendant le jeu.');
       }
 
+      // ✅ Relancer automatiquement le jeu après 10 secondes
+      setTimeout(() => {
+        lancerJeu(bot, chatId, telegramId, mise);
+      }, 10000);
+
       return;
     }
 
+    // ✅ Affiche le multiplicateur en temps réel
     bot.sendMessage(chatId, `📈 Multiplicateur : x${multiplicateur.toFixed(2)}`, {
       reply_markup: {
         inline_keyboard: [
