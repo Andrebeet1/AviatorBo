@@ -1,7 +1,4 @@
-// handlers/retirer.js
-
 const User = require('../../models/User');
-
 
 async function handleRetirer(bot, msg) {
   const chatId = msg.chat.id;
@@ -13,12 +10,11 @@ async function handleRetirer(bot, msg) {
       return bot.sendMessage(chatId, `❗ Envoie /start pour t’inscrire.`);
     }
 
-    if (!user.enJeu) {
+    if (!user.enJeu || user.pari <= 0) {
       return bot.sendMessage(chatId, `⛔ Tu n'as pas de pari en cours.`);
     }
 
-    // On simule un multiplicateur moyen si retiré manuellement
-    const multiplicateur = (1.5 + Math.random()).toFixed(2);
+    const multiplicateur = +(1.5 + Math.random()).toFixed(2);
     const gain = Math.floor(user.pari * multiplicateur);
 
     user.enJeu = false;
@@ -35,9 +31,10 @@ async function handleRetirer(bot, msg) {
 
     bot.sendMessage(chatId, `✅ Retrait réussi à x${multiplicateur}\n💰 Tu gagnes ${gain} F.`);
   } catch (error) {
-    console.error('Erreur dans retirer.js:', error);
+    console.error(`[retirer.js] Erreur pour l’utilisateur ${telegramId}:`, error);
     bot.sendMessage(chatId, `❌ Erreur lors du retrait.`);
   }
 }
 
 module.exports = handleRetirer;
+
