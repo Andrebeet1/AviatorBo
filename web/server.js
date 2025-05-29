@@ -1,7 +1,8 @@
 // web/server.js
 const express = require('express');
 const path = require('path');
-const db = require('../db'); // Connexion PostgreSQL
+const db = require('../config/db');
+ // Connexion PostgreSQL
 require('dotenv').config();
 
 const app = express();
