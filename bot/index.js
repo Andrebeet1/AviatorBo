@@ -3,11 +3,11 @@ const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 
 // Handlers personnalisés PostgreSQL
-const handleStart = require('./handlers_pg/start');
-const handleParier = require('./handlers_pg/parier');
-const handleRetirer = require('./handlers_pg/retirer');
-const handleSolde = require('./handlers_pg/solde');
-const handleHistorique = require('./handlers_pg/historique');
+const handleStart = require('./handlers/start');
+const handleParier = require('./handlers/parier');
+const handleRetirer = require('./handlers/retirer');
+const handleSolde = require('./handlers/solde');
+const handleHistorique = require('./handlers/historique');
 
 const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
