@@ -1,7 +1,5 @@
-// models/User.js
 const db = require('../config/db');
- 
-const { v4: uuidv4 } = require('uuid'); // Pour des IDs uniques si nécessaire
+const { v4: uuidv4 } = require('uuid');
 
 // Crée ou récupère un utilisateur
 async function findOrCreateUser(telegramId, username) {
@@ -32,13 +30,13 @@ async function findOrCreateUser(telegramId, username) {
   return rows[0];
 }
 
-// Récupère un utilisateur
+// Récupère un utilisateur (par ID Telegram)
 async function getUser(telegramId) {
   const { rows } = await db.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
   return rows[0] || null;
 }
 
-// Met à jour les champs d'un utilisateur
+// Met à jour un utilisateur
 async function updateUser(telegramId, updates) {
   const keys = Object.keys(updates);
   const values = Object.values(updates);
@@ -51,7 +49,7 @@ async function updateUser(telegramId, updates) {
   );
 }
 
-// Ajoute une entrée dans l'historique
+// Ajoute une partie à l'historique
 async function addToHistorique(telegramId, partie) {
   const user = await getUser(telegramId);
   if (!user) return;
@@ -59,7 +57,7 @@ async function addToHistorique(telegramId, partie) {
   const historique = user.historique || [];
   historique.push({
     ...partie,
-    date: new Date().toISOString(), // Horodatage automatique
+    date: new Date().toISOString(), // ajout horodatage
   });
 
   await db.query(
@@ -68,9 +66,17 @@ async function addToHistorique(telegramId, partie) {
   );
 }
 
+// Récupère l'historique de paris d'un utilisateur
+async function getHistorique(telegramId) {
+  const user = await getUser(telegramId);
+  return user ? user.historique || [] : [];
+}
+
 module.exports = {
   findOrCreateUser,
   getUser,
   updateUser,
   addToHistorique,
+  findByTelegramId: getUser, // alias
+  getHistorique,
 };
