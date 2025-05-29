@@ -1,5 +1,4 @@
-const pool = require('../db');
-
+const db = require('../../config/db');
 async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString(); // Converti en string
