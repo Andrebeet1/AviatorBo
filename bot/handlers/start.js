@@ -1,6 +1,6 @@
 // handlers/start.js
 
-const User = require('../models/User');
+const User = require('../../models/User');
 
 async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
