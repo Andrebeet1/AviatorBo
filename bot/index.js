@@ -12,16 +12,15 @@ const handleHistorique = require('./handlers/historique');
 
 // Vérifie le token
 const token = process.env.TELEGRAM_TOKEN;
-if (!token) {
-  console.error("❌ TELEGRAM_TOKEN est manquant !");
+const baseUrl = process.env.BASE_URL;
+if (!token || !baseUrl) {
+  console.error("❌ TELEGRAM_TOKEN ou BASE_URL manquant !");
   process.exit(1);
 }
 
-// Initialisation du bot (sans polling)
 const bot = new TelegramBot(token);
 const app = express();
 const port = process.env.PORT || 3000;
-const baseUrl = process.env.BASE_URL;
 
 // Middleware
 app.use(express.json());
@@ -36,14 +35,20 @@ db.connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch((err) => console.error("❌ Erreur PostgreSQL :", err));
 
-// Configuration du webhook
-bot.setWebHook(`${baseUrl}/bot${token}`);
-console.log(`🤖 Webhook défini sur ${baseUrl}/bot${token}`);
+// Webhook Telegram
+const webhookUrl = `${baseUrl.replace(/\/$/, '')}/bot${token}`;
+bot.setWebHook(webhookUrl);
+console.log(`🤖 Webhook défini sur ${webhookUrl}`);
 
-// Réception des messages depuis Telegram via le webhook
+// Réception des messages depuis Telegram
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
+});
+
+// Route GET pour Render
+app.get('/', (req, res) => {
+  res.send('🤖 Bot Telegram avec Express et PostgreSQL est actif !');
 });
 
 // Commandes Telegram
@@ -64,7 +69,7 @@ bot.on('callback_query', async (query) => {
   }
 });
 
-// Démarrage du serveur Express
+// Démarrage du serveur
 app.listen(port, () => {
   console.log(`🚀 Serveur Express lancé sur le port ${port}`);
 });
