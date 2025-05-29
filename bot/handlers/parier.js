@@ -1,86 +1,66 @@
 const User = require('../../models/User');
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function handleParier(bot, msg, montant) {
+async function handleParier(bot, msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+  const text = msg.text.trim();
 
-  const user = await User.findByTelegramId(telegramId);
-  if (!user) {
-    return bot.sendMessage(chatId, `❗ Envoie d'abord /start pour t'inscrire.`);
+  const parts = text.split(' ');
+  if (parts.length !== 2 || isNaN(parts[1])) {
+    return bot.sendMessage(chatId, '❗ Utilise : /parier <montant>\nEx: /parier 200');
   }
 
-  if (user.en_jeu) {
-    return bot.sendMessage(chatId, `🎮 Tu as déjà un jeu en cours. Termine-le avant de recommencer.`);
-  }
+  const montant = parseInt(parts[1]);
 
-  if (montant > user.balance) {
-    return bot.sendMessage(chatId, `💸 Solde insuffisant pour miser ${montant} F.`);
-  }
+  try {
+    const user = await User.getUser(telegramId);
 
-  let balance = user.balance - montant;
-  let pari = montant;
-  let multiplicateur = 1.0;
-  let crash = false;
-  let retire = false;
-
-  // Met à jour l’état initial du jeu
-  await User.updateGameState(telegramId, {
-    balance,
-    pari,
-    en_jeu: true
-  });
-
-  bot.sendMessage(chatId, `🎲 Tu as parié ${montant} F. Le multiplicateur grimpe... 🚀`);
-
-  const retirerButton = {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: "💸 Retirer maintenant", callback_data: "retirer" }
-      ]]
-    }
-  };
-
-  // 👂 Activation du bouton "Retirer"
-  bot.once('callback_query', async query => {
-    if (query.data === 'retirer' && query.message.chat.id === chatId) {
-      retire = true;
-
-      const currentUser = await User.findByTelegramId(telegramId);
-      if (!currentUser.en_jeu) return;
-
-      const gain = Math.floor(currentUser.pari * multiplicateur);
-
-      await User.finishGame(telegramId, {
-        gain,
-        multi: multiplicateur
-      });
-
-      bot.sendMessage(chatId, `✅ Tu as retiré à x${multiplicateur.toFixed(2)}\n💵 Gain : ${gain} F`);
-    }
-  });
-
-  // 🔁 Boucle de jeu active
-  while (!crash && !retire) {
-    multiplicateur += Math.random() * 0.3;
-
-    await bot.sendMessage(chatId, `🔥 Multiplicateur : x${multiplicateur.toFixed(2)}`, retirerButton);
-
-    if (Math.random() < 0.15) {
-      crash = true;
-
-      await User.finishGame(telegramId, {
-        gain: 0,
-        multi: multiplicateur
-      });
-
-      return bot.sendMessage(chatId, `💥 Crash à x${multiplicateur.toFixed(2)} ! Tu as tout perdu.`);
+    if (!user) {
+      return bot.sendMessage(chatId, `❗ Envoie d'abord /start pour t'inscrire.`);
     }
 
-    await sleep(2000);
+    if (user.en_jeu) {
+      return bot.sendMessage(chatId, `⚠️ Tu as déjà un pari en cours.`);
+    }
+
+    if (montant <= 0 || montant > user.balance) {
+      return bot.sendMessage(chatId, `💸 Montant invalide ou solde insuffisant.`);
+    }
+
+    // Mise en jeu
+    const newBalance = user.balance - montant;
+    await User.updateUser(telegramId, {
+      en_jeu: true,
+      pari: montant,
+      balance: newBalance
+    });
+
+    // Simuler un multiplicateur aléatoire
+    const multi = Math.random() < 0.5 ? 0 : (Math.random() * 3 + 1).toFixed(2); // x0 ou x1-4
+    const gain = Math.round(montant * multi);
+
+    const message = multi > 0
+      ? `🎉 Tu as gagné !\n\n💸 Pari : ${montant} F\n📈 Multiplicateur : x${multi}\n🏆 Gain : ${gain} F`
+      : `😢 Tu as perdu !\n\n💸 Pari : ${montant} F\n📉 Multiplicateur : x0\n🏚️ Gain : 0 F`;
+
+    // Mise à jour du solde et de l'historique
+    await User.updateUser(telegramId, {
+      balance: newBalance + gain,
+      en_jeu: false,
+      pari: 0
+    });
+
+    await User.addToHistorique(telegramId, {
+      pari: montant,
+      multi,
+      gain
+    });
+
+    return bot.sendMessage(chatId, message);
+
+  } catch (err) {
+    console.error('Erreur handleParier.js :', err);
+    return bot.sendMessage(chatId, `❌ Erreur lors du traitement du pari.`);
   }
 }
 
