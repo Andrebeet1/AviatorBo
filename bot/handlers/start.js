@@ -1,25 +1,14 @@
-// handlers/start.js
-
 const User = require('../../models/User');
 
 async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
-  const telegramId = msg.from.id;
+  const telegramId = msg.from.id.toString(); // Assure que l'ID est une string
   const username = msg.from.username || msg.from.first_name;
 
   try {
-    let user = await User.findOne({ telegramId });
+    const user = await User.findOrCreateUser(telegramId, username);
 
-    if (!user) {
-      user = new User({
-        telegramId,
-        username,
-        balance: 1000,
-        enJeu: false,
-        pari: 0,
-        historique: []
-      });
-      await user.save();
+    if (user.balance === 1000) {
       bot.sendMessage(chatId, `🎉 Bienvenue @${username} !\nTon compte a été créé avec 💰 1000 F.`);
     } else {
       bot.sendMessage(chatId, `👋 Bon retour @${username} !\n💰 Ton solde : ${user.balance} F.`);
