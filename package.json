@@ -9,7 +9,14 @@
     "dev": "concurrently \"npm run bot\" \"npm run web\"",
     "start": "npm run dev"
   },
-  "keywords": ["telegram", "bot", "aviator", "game", "express", "mongodb"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "aviator",
+    "game",
+    "express",
+    "mongodb"
+  ],
   "author": "TonNom",
   "license": "MIT",
   "dependencies": {
@@ -18,7 +25,8 @@
     "ejs": "^3.1.9",
     "express": "^4.19.2",
     "mongoose": "^8.2.1",
-    "node-telegram-bot-api": "^0.61.0"
+    "node-telegram-bot-api": "^0.61.0",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
