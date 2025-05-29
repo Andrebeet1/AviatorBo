@@ -1,19 +1,15 @@
-// bot/game.js
+const pool = require('../config/db');
 
-const User = require('../models/User');
-
-function lancerJeu(bot, chatId, telegramId, mise) {
+async function lancerJeu(bot, chatId, telegramId, mise) {
   let multiplicateur = 1.00;
-  const intervalle = 500; // 0.5 seconde
-  const croissance = () => (Math.random() * 0.3 + 0.05); // croissance aléatoire
-
+  const intervalle = 500;
+  const croissance = () => (Math.random() * 0.3 + 0.05);
   let enCours = true;
 
   const interval = setInterval(async () => {
     multiplicateur += croissance();
     multiplicateur = parseFloat(multiplicateur.toFixed(2));
 
-    // On simule un crash entre x1.5 et x5
     const probaCrash = Math.random();
     const crashImminent = probaCrash < 0.05 + multiplicateur / 10;
 
@@ -21,25 +17,36 @@ function lancerJeu(bot, chatId, telegramId, mise) {
       clearInterval(interval);
       enCours = false;
 
-      const user = await User.findOne({ telegramId });
-      if (!user || !user.enJeu) return;
+      try {
+        const { rows } = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
+        if (rows.length === 0 || !rows[0].en_jeu) return;
 
-      const perte = user.pari;
-      user.historique.push({
-        date: new Date(),
-        pari: perte,
-        multi: multiplicateur.toFixed(2),
-        gain: 0
-      });
-      user.enJeu = false;
-      user.pari = 0;
-      await user.save();
+        const user = rows[0];
+        const perte = user.pari;
+        const historique = user.historique || [];
+        historique.push({
+          date: new Date(),
+          pari: perte,
+          multi: multiplicateur.toFixed(2),
+          gain: 0
+        });
 
-      bot.sendMessage(chatId, `💥 CRASH à x${multiplicateur.toFixed(2)}\n❌ Tu as perdu ta mise.`);
+        await pool.query(
+          `UPDATE users 
+           SET en_jeu = false, pari = 0, historique = $1 
+           WHERE telegram_id = $2`,
+          [JSON.stringify(historique), telegramId]
+        );
+
+        bot.sendMessage(chatId, `💥 CRASH à x${multiplicateur.toFixed(2)}\n❌ Tu as perdu ta mise.`);
+      } catch (err) {
+        console.error('Erreur PostgreSQL dans lancerJeu:', err);
+        bot.sendMessage(chatId, '❌ Une erreur s’est produite pendant le jeu.');
+      }
+
       return;
     }
 
-    // Mise à jour du message de jeu
     bot.sendMessage(chatId, `📈 Multiplicateur : x${multiplicateur.toFixed(2)}`, {
       reply_markup: {
         inline_keyboard: [
@@ -47,7 +54,6 @@ function lancerJeu(bot, chatId, telegramId, mise) {
         ]
       }
     });
-
   }, intervalle);
 }
 
