@@ -1,7 +1,4 @@
-// handlers/historique.js
-
 const User = require('../../models/User');
-
 
 function formatDate(date) {
   return new Date(date).toLocaleString('fr-FR', {
@@ -12,20 +9,22 @@ function formatDate(date) {
 
 async function handleHistorique(bot, msg) {
   const chatId = msg.chat.id;
-  const telegramId = msg.from.id;
+  const telegramId = msg.from.id.toString(); // Convertir en string pour PostgreSQL
 
   try {
-    const user = await User.findOne({ telegramId });
+    const user = await User.findByTelegramId(telegramId);
 
     if (!user) {
       return bot.sendMessage(chatId, `❗ Envoie d'abord /start pour t'inscrire.`);
     }
 
-    if (user.historique.length === 0) {
+    const historique = await User.getHistorique(telegramId);
+
+    if (historique.length === 0) {
       return bot.sendMessage(chatId, `📭 Aucun historique trouvé.`);
     }
 
-    const dernieresParties = user.historique.slice(-5).reverse();
+    const dernieresParties = historique.slice(-5).reverse();
     let message = `📊 Dernières parties :\n\n`;
 
     dernieresParties.forEach((partie, index) => {
