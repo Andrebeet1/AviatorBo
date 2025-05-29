@@ -41,7 +41,7 @@ db.connect()
   });
 
 // Configure le webhook Telegram
-const webhookUrl = `${baseUrl.replace(/\/$/, '')}/bot${token}`;
+const webhookUrl = `${baseUrl.replace(/\/$/, '')}/webhook`;
 bot.setWebHook(webhookUrl);
 console.log(`🤖 Webhook Telegram défini : ${webhookUrl}`);
 
@@ -50,7 +50,7 @@ app.get('/', (req, res) => {
   res.send('🤖 Bot Telegram actif !');
 });
 
-app.post(`/bot${token}`, (req, res) => {
+app.post('/webhook', (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
@@ -70,9 +70,15 @@ bot.on('callback_query', async (query) => {
 
   await bot.answerCallbackQuery(query.id);
 
-  // Ajouter ici la logique selon query.data, ex:
+  // ⚠️ Tu peux router les actions vers les bons handlers ici si nécessaire
   if (data === 'solde') {
-    // afficher le solde
+    handleSolde(bot, { chat: { id: chatId }, from: { id: userId } }, db);
+  } else if (data === 'parier') {
+    handleParier(bot, { chat: { id: chatId }, from: { id: userId } }, ['200'], db);
+  } else if (data === 'retirer') {
+    handleRetirer(bot, { chat: { id: chatId }, from: { id: userId } }, db);
+  } else if (data === 'historique') {
+    handleHistorique(bot, { chat: { id: chatId }, from: { id: userId } }, db);
   }
 });
 
