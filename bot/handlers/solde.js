@@ -1,14 +1,11 @@
-// handlers/solde.js
-
 const User = require('../../models/User');
-
 
 async function handleSolde(bot, msg) {
   const chatId = msg.chat.id;
-  const telegramId = msg.from.id;
+  const telegramId = msg.from.id.toString();
 
   try {
-    const user = await User.findOne({ telegramId });
+    const user = await User.findByTelegramId(telegramId);
 
     if (!user) {
       return bot.sendMessage(chatId, `❗ Tu n'es pas encore inscrit. Envoie /start pour commencer.`);
