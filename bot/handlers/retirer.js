@@ -1,6 +1,7 @@
 // handlers/retirer.js
 
-const User = require('../models/User');
+const User = require('../../models/User');
+
 
 async function handleRetirer(bot, msg) {
   const chatId = msg.chat.id;
