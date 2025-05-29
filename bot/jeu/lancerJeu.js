@@ -1,4 +1,5 @@
-const pool = require('../config/db');
+const db = require('../config/db');
+
 
 async function lancerJeu(bot, chatId, telegramId, mise) {
   let multiplicateur = 1.00;
