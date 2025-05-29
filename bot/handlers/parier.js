@@ -1,4 +1,5 @@
 const User = require('../../models/User');
+const lancerJeu = require('../jeu/lancerJeu');
 
 async function handleParier(bot, msg) {
   const chatId = msg.chat.id;
@@ -27,7 +28,6 @@ async function handleParier(bot, msg) {
       return bot.sendMessage(chatId, `💸 Montant invalide ou solde insuffisant.`);
     }
 
-    // Mise en jeu
     const newBalance = user.balance - montant;
     await User.updateUser(telegramId, {
       en_jeu: true,
@@ -35,28 +35,9 @@ async function handleParier(bot, msg) {
       balance: newBalance
     });
 
-    // Simuler un multiplicateur aléatoire
-    const multi = Math.random() < 0.5 ? 0 : (Math.random() * 3 + 1).toFixed(2); // x0 ou x1-4
-    const gain = Math.round(montant * multi);
+    bot.sendMessage(chatId, `🎮 Jeu lancé avec une mise de ${montant} F.\n📈 Le multiplicateur commence à x1.00...\nAppuie sur "💸 Retirer maintenant" avant le crash !`);
 
-    const message = multi > 0
-      ? `🎉 Tu as gagné !\n\n💸 Pari : ${montant} F\n📈 Multiplicateur : x${multi}\n🏆 Gain : ${gain} F`
-      : `😢 Tu as perdu !\n\n💸 Pari : ${montant} F\n📉 Multiplicateur : x0\n🏚️ Gain : 0 F`;
-
-    // Mise à jour du solde et de l'historique
-    await User.updateUser(telegramId, {
-      balance: newBalance + gain,
-      en_jeu: false,
-      pari: 0
-    });
-
-    await User.addToHistorique(telegramId, {
-      pari: montant,
-      multi,
-      gain
-    });
-
-    return bot.sendMessage(chatId, message);
+    lancerJeu(bot, chatId, telegramId, montant);
 
   } catch (err) {
     console.error('Erreur handleParier.js :', err);
