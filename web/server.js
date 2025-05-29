@@ -1,26 +1,37 @@
 // web/server.js
 const express = require('express');
 const path = require('path');
-const mongoose = require('mongoose');
+const db = require('../db'); // Connexion PostgreSQL
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connexion MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('✅ Web connecté à MongoDB'))
-  .catch(err => console.error('❌ MongoDB Web :', err));
-
-// Config EJS + Routes
+// Configuration du moteur de templates
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use('/', require('./routes/classement'));
+// Dossier public pour les fichiers CSS/JS/images
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Démarrage serveur
+// Route principale : Classement des joueurs
+app.get('/classement', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT username, solde, total_paris 
+      FROM joueurs 
+      ORDER BY solde DESC 
+      LIMIT 20
+    `);
+    const joueurs = result.rows;
+    res.render('classement', { joueurs });
+  } catch (err) {
+    console.error('❌ Erreur PostgreSQL :', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// Lancement du serveur
 app.listen(PORT, () => {
   console.log(`🌐 Serveur web actif sur http://localhost:${PORT}/classement`);
 });
