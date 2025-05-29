@@ -23,15 +23,15 @@ async function handleParier(bot, msg, montant) {
 
   let balance = user.balance - montant;
   let pari = montant;
-  let enJeu = true;
   let multiplicateur = 1.0;
   let crash = false;
+  let retire = false;
 
   // Met à jour l’état initial du jeu
   await User.updateGameState(telegramId, {
     balance,
     pari,
-    enJeu
+    en_jeu: true
   });
 
   bot.sendMessage(chatId, `🎲 Tu as parié ${montant} F. Le multiplicateur grimpe... 🚀`);
@@ -44,38 +44,16 @@ async function handleParier(bot, msg, montant) {
     }
   };
 
-  const gameLoop = async () => {
-    while (!crash) {
-      multiplicateur += Math.random() * 0.3;
-      await bot.sendMessage(chatId, `🔥 Multiplicateur : x${multiplicateur.toFixed(2)}`, retirerButton);
-
-      if (Math.random() < 0.15) {
-        crash = true;
-
-        // Enregistre le crash
-        await User.finishGame(telegramId, {
-          gain: 0,
-          multi: multiplicateur
-        });
-
-        return bot.sendMessage(chatId, `💥 Crash à x${multiplicateur.toFixed(2)} ! Tu as tout perdu.`);
-      }
-
-      await sleep(2000);
-    }
-  };
-
-  await gameLoop();
-
-  // Gestion du bouton "Retirer maintenant"
+  // 👂 Activation du bouton "Retirer"
   bot.once('callback_query', async query => {
     if (query.data === 'retirer' && query.message.chat.id === chatId) {
+      retire = true;
+
       const currentUser = await User.findByTelegramId(telegramId);
       if (!currentUser.en_jeu) return;
 
       const gain = Math.floor(currentUser.pari * multiplicateur);
 
-      // Enregistre le retrait
       await User.finishGame(telegramId, {
         gain,
         multi: multiplicateur
@@ -84,6 +62,26 @@ async function handleParier(bot, msg, montant) {
       bot.sendMessage(chatId, `✅ Tu as retiré à x${multiplicateur.toFixed(2)}\n💵 Gain : ${gain} F`);
     }
   });
+
+  // 🔁 Boucle de jeu active
+  while (!crash && !retire) {
+    multiplicateur += Math.random() * 0.3;
+
+    await bot.sendMessage(chatId, `🔥 Multiplicateur : x${multiplicateur.toFixed(2)}`, retirerButton);
+
+    if (Math.random() < 0.15) {
+      crash = true;
+
+      await User.finishGame(telegramId, {
+        gain: 0,
+        multi: multiplicateur
+      });
+
+      return bot.sendMessage(chatId, `💥 Crash à x${multiplicateur.toFixed(2)} ! Tu as tout perdu.`);
+    }
+
+    await sleep(2000);
+  }
 }
 
 module.exports = handleParier;
